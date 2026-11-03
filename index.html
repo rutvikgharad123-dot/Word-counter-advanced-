@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Counter & Typing Speed</title>
+<style>
+  :root{
+    --bg1:#0b1020; --bg2:#1a1040; --panel:rgba(255,255,255,.06); --border:rgba(255,255,255,.12);
+    --text:#e8eaf6; --muted:#9aa3c7; --accent:#8b5cf6; --accent2:#22d3ee; --input:rgba(0,0,0,.35);
+  }
+  [data-theme="light"]{
+    --bg1:#eef2ff; --bg2:#fdf2f8; --panel:rgba(255,255,255,.75); --border:rgba(0,0,0,.08);
+    --text:#1e1b4b; --muted:#6b7280; --accent:#6d28d9; --accent2:#0891b2; --input:#fff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; padding:24px 16px; color:var(--text);
+    font-family:"Segoe UI",system-ui,Arial,sans-serif;
+    background:radial-gradient(circle at 15% 10%,var(--bg2),transparent 50%),var(--bg1);
+    transition:background .3s,color .3s;
+  }
+  .wrap{max-width:860px;margin:auto}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  h1{margin:0;font-size:28px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);font-size:14px;margin-top:4px}
+  .toggle{border:1px solid var(--border);background:var(--panel);color:var(--text);
+     padding:8px 14px;border-radius:999px;cursor:pointer;font-size:14px;backdrop-filter:blur(8px)}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:20px;
+     backdrop-filter:blur(12px);box-shadow:0 10px 40px rgba(0,0,0,.25);margin-bottom:18px}
+  textarea{width:100%;height:220px;padding:16px;font-size:17px;line-height:1.5;color:var(--text);
+     background:var(--input);border:1px solid var(--border);border-radius:12px;resize:vertical;outline:none;
+     font-family:inherit;transition:border .2s,box-shadow .2s}
+  textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.25)}
+  h3{margin:0 0 12px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:12px}
+  .card{background:var(--input);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;
+     transition:transform .2s}
+  .card:hover{transform:translateY(-3px)}
+  .card b{display:block;font-size:28px;font-weight:700}
+  .card span{font-size:12px;color:var(--muted)}
+  .speed .card b{background:linear-gradient(90deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text;background-clip:text;color:transparent;font-size:34px}
+  .bar{height:8px;border-radius:99px;background:var(--input);margin-top:16px;overflow:hidden}
+  .bar div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
+  .level{margin-top:10px;font-size:14px;color:var(--muted);text-align:center}
+  button.reset{width:100%;padding:13px;border:0;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;
+     color:#fff;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:opacity .2s,transform .1s}
+  button.reset:hover{opacity:.9} button.reset:active{transform:scale(.98)}
+  .actions{display:flex;gap:12px}
+  button.finish{flex:2;padding:13px;border:0;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;
+     color:#fff;background:linear-gradient(90deg,#10b981,var(--accent2))}
+  button.reset{flex:1;width:auto;background:var(--panel);border:1px solid var(--border);color:var(--text)}
+  #result{display:none;border:1px solid var(--accent);box-shadow:0 0 30px rgba(139,92,246,.35)}
+  #result .big{font-size:15px;line-height:1.7;margin-top:14px;text-align:center;color:var(--muted)}
+  #result .big b{color:var(--text)}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Word Counter</h1>
+      <div class="sub">Live stats + typing speed test</div>
+    </div>
+    <button class="toggle" id="themeBtn" onclick="toggleTheme()">☀️ Light</button>
+  </header>
+
+  <div class="panel">
+    <textarea id="text" placeholder="Yahan typing shuru karo..." autofocus></textarea>
+  </div>
+
+  <div class="panel">
+    <h3>Text Stats</h3>
+    <div class="grid">
+      <div class="card"><b id="words">0</b><span>Words</span></div>
+      <div class="card"><b id="chars">0</b><span>Characters</span></div>
+      <div class="card"><b id="chars_ns">0</b><span>No spaces</span></div>
+      <div class="card"><b id="sentences">0</b><span>Sentences</span></div>
+      <div class="card"><b id="paragraphs">0</b><span>Paragraphs</span></div>
+      <div class="card"><b id="reading">0s</b><span>Reading time</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Typing Speed</h3>
+    <div class="grid speed">
+      <div class="card"><b id="wpm">0</b><span>WPM</span></div>
+      <div class="card"><b id="cpm">0</b><span>CPM</span></div>
+      <div class="card"><b id="time">0s</b><span>Time</span></div>
+    </div>
+    <div class="bar"><div id="fill"></div></div>
+    <div class="level" id="level">Start typing to measure your speed</div>
+  </div>
+
+  <div class="panel" id="result">
+    <h3>🏁 Final Result</h3>
+    <div class="grid speed">
+      <div class="card"><b id="r_words">0</b><span>Words likhe</span></div>
+      <div class="card"><b id="r_time">0s</b><span>Total time</span></div>
+      <div class="card"><b id="r_wpm">0</b><span>WPM</span></div>
+      <div class="card"><b id="r_sent">0</b><span>Sentences</span></div>
+      <div class="card"><b id="r_avg">0s</b><span>Time / sentence</span></div>
+    </div>
+    <div class="big" id="r_text"></div>
+  </div>
+
+  <div class="actions">
+    <button class="finish" onclick="finishTest()">✅ Finish &amp; Show Result</button>
+    <button class="reset" onclick="resetAll()">Reset</button>
+  </div>
+  <footer>Made with Python (Flask)</footer>
+</div>
+
+<script>
+const box = document.getElementById("text");
+let start = null, timer = null, debounce = null;
+const $ = id => document.getElementById(id);
+
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  $("themeBtn").textContent = t === "dark" ? "☀️ Light" : "🌙 Dark";
+  try { localStorage.setItem("theme", t); } catch(e){}
+}
+function toggleTheme(){
+  setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+}
+try { setTheme(localStorage.getItem("theme") || "dark"); } catch(e){ setTheme("dark"); }
+
+function levelText(w){
+  if (w < 20) return "🐢 Beginner";
+  if (w < 40) return "🙂 Average";
+  if (w < 60) return "🚀 Good";
+  if (w < 80) return "⚡ Fast";
+  return "🔥 Pro typist";
+}
+
+function updateSpeed() {
+  if (!start) return;
+  const sec = (Date.now() - start) / 1000;
+  const mins = sec / 60;
+  const chars = box.value.length;
+  const wpm = mins > 0 ? Math.round((chars / 5) / mins) : 0; // 5 chars = 1 word
+  $("time").textContent = Math.floor(sec) + "s";
+  $("cpm").textContent = mins > 0 ? Math.round(chars / mins) : 0;
+  $("wpm").textContent = wpm;
+  $("fill").style.width = Math.min(wpm, 100) + "%";
+  $("level").textContent = levelText(wpm);
+}
+
+function localStats(t) {
+  const words = t.trim() ? t.trim().split(/\s+/).length : 0;
+  const sentences = t.split(/[.!?।]+/).filter(x => x.trim()).length;
+  const paragraphs = t.split(/\n\s*\n/).filter(x => x.trim()).length;
+  return {
+    words, characters: t.length,
+    characters_no_spaces: t.replace(/\s/g, "").length,
+    sentences, paragraphs, reading_time_sec: Math.round(words / 200 * 60)
+  };
+}
+
+function showStats(d) {
+  $("words").textContent = d.words;
+  $("chars").textContent = d.characters;
+  $("chars_ns").textContent = d.characters_no_spaces;
+  $("sentences").textContent = d.sentences;
+  $("paragraphs").textContent = d.paragraphs;
+  $("reading").textContent = d.reading_time_sec + "s";
+}
+
+async function fetchStats() {
+  showStats(localStats(box.value));            // instant, always works
+  try {                                        // Python server result overrides
+    const res = await fetch("/analyze", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: box.value})
+    });
+    if (!res.ok) throw new Error("server " + res.status);
+    showStats(await res.json());
+  } catch (e) {
+    console.warn("Server unreachable, using browser count:", e.message);
+  }
+}
+
+box.addEventListener("input", () => {
+  if (!start && box.value.length) {
+    start = Date.now();
+    timer = setInterval(updateSpeed, 500);
+  }
+  if (!box.value.length) { resetAll(); return; }
+  showStats(localStats(box.value));
+  clearTimeout(debounce);
+  debounce = setTimeout(fetchStats, 150);
+});
+
+async function finishTest() {
+  if (!start) { alert("Pehle kuch type karo!"); return; }
+  clearInterval(timer);
+  const sec = (Date.now() - start) / 1000;
+  const chars = box.value.length;
+  const wpm = Math.round((chars / 5) / (sec / 60));
+  box.disabled = true;
+  await fetchStats();
+  const words = +$("words").textContent, sent = Math.max(+$("sentences").textContent, 1);
+  const avg = (sec / sent).toFixed(1);
+  $("time").textContent = Math.floor(sec) + "s";
+  $("wpm").textContent = wpm;
+  $("r_words").textContent = words;
+  $("r_time").textContent = sec.toFixed(1) + "s";
+  $("r_wpm").textContent = wpm;
+  $("r_sent").textContent = $("sentences").textContent;
+  $("r_avg").textContent = avg + "s";
+  $("r_text").innerHTML = "Tumne <b>" + words + " words</b> <b>" + sec.toFixed(1) +
+    " seconds</b> mein type kiye. Ek sentence ka average time <b>" + avg + "s</b> raha. Speed: <b>" + wpm + " WPM</b> — " + levelText(wpm);
+  $("result").style.display = "block";
+  $("result").scrollIntoView({behavior: "smooth", block: "center"});
+}
+
+function resetAll() {
+  box.disabled = false; $("result").style.display = "none";
+  clearInterval(timer); start = null; box.value = "";
+  ["words","chars","chars_ns","sentences","paragraphs","wpm","cpm"].forEach(i => $(i).textContent = 0);
+  $("reading").textContent = "0s"; $("time").textContent = "0s";
+  $("fill").style.width = "0"; $("level").textContent = "Start typing to measure your speed";
+}
+box.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') finishTest(); });
+</script>
+</body>
+</html>
